@@ -103,7 +103,7 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 	// Now, we need to keep dividing until all particles are alone in one cube
 	// For every subcubes (children)
 	for(i=0 ; i<4 ; i++){
-		getchar();
+
 		child = father->children[i];
 		// If the cube is empty
 		if (child->N_particle == 0){
