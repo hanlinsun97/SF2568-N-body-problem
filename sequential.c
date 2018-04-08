@@ -99,16 +99,24 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 	Particles = Particles->next;	
 	}
 	
+	
 	// Now, we need to keep dividing until all particles are alone in one cube
 	// For every subcubes (children)
 	for(i=0 ; i<4 ; i++){
+		getchar();
 		child = father->children[i];
 		// If the cube is empty
 		if (child->N_particle == 0){
+			printf("empty \n");
+			printf("Number of particle : %d \n", (father->children[i])->N_particle);
 			father->children[i] = NULL;
 		}
 		// If the cube has only particle inside, we put the right information
 		if (child->N_particle == 1){
+			printf("Alone \n");
+			printf("Number of particle : %d \n", (father->children[i])->N_particle);
+			print((father->children[i])->Particles);
+			
 			int j;
 			// It will have no children
 			for(j=0;j<4;j++){
@@ -123,7 +131,7 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 			child->y_center = y[i];
 			
 		}
-		else{
+		if((child->N_particle > 1) && (child !=NULL)){
 			// Rewriting the new subcubes boundaries
 			if(i==0){
 				x_max = x_half;
@@ -141,9 +149,14 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 				x_min = x_half;
 				y_min = y_half;
 			}
+			printf("Dividing \n");
+			printf("Number of particle : %d \n", (father->children[i])->N_particle);
+			print((father->children[i])->Particles);
+			printf("\n");
 			// Recursive call
 			tree_initialization(father->children[i], x_min, x_max, y_min, y_max, x, y, charge_e);
 		}
+		
 	}		
 }
 
@@ -184,12 +197,10 @@ int main(){
 	// Initialization of the tree
 	int i;
 	for(i=0 ; i < N ; i++) Root_Particles = append(i,Root_Particles);
-	print(Root_Particles);
 	
 	Root->Particles = Root_Particles;
 	Root->N_particle = N;
 	
-	printf("%d \n",Root->N_particle);
 
 	tree_initialization(Root, x_min, x_max, y_min, y_max, x, y, charge_e);
 	visualize_tree(Root);
