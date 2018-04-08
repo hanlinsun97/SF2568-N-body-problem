@@ -44,7 +44,7 @@ void random_position_distribution(double x_min, double x_max, double y_min, doub
 
 void tree_initialization(node *father, double x_min, double x_max, double y_min, double y_max, double* x, double* y, double charge_e){
 	int i, index;
-	double x_half, y_half, x_i, y_i;
+	double x_half, y_half, x_i, y_i,x_MAX,y_MAX,y_MIN,x_MIN;
 	int N_particle = father->N_particle;
 		
 	List Particles = father->Particles;
@@ -58,7 +58,7 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 	// Coordinates of where we are going to cut
 	x_half = (x_max + x_min)*0.5;
 	y_half = (y_max + y_min)*0.5;
-	
+
 	// For every particles in the father cube
 	for(i = 0; i < N_particle; i++){
 		
@@ -67,7 +67,6 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 		// Where is the particle ? In which child subcube ? 
 		// subcube 1
 		if ( (x_i < x_half) && (y_i < y_half)){
-			
 			child = father->children[0];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
@@ -75,7 +74,6 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 		}
 		// subcube 2
 		if ( (x_i >= x_half) && (y_i < y_half)){
-
 			child = father->children[1];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
@@ -83,7 +81,6 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 		}
 		// subcube 3
 		if ( (x_i < x_half) && (y_i >= y_half)){
-			
 			child = father->children[2];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
@@ -91,7 +88,6 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 		}
 		// subcube 4
 		if ( (x_i >= x_half) && (y_i >= y_half)){
-			
 			child = father->children[3];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
@@ -105,7 +101,11 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 	// Now, we need to keep dividing until all particles are alone in one cube
 	// For every subcubes (children)
 	for(i=0 ; i<4 ; i++){
-		getchar();
+		// We need this otherwise, in the part where we change the boundaries for the children, one child will modify the boundaries of the other child
+		x_MAX = x_max;
+		y_MAX = y_max;
+		x_MIN = x_min;
+		y_MIN = y_min;
 		child = father->children[i];
 		// If the cube is empty
 		if (child->N_particle == 0){
@@ -136,27 +136,28 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 		if((child->N_particle > 1) && (child !=NULL)){
 			// Rewriting the new subcubes boundaries
 			if(i==0){
-				x_max = x_half;
-				y_max = y_half;
+				x_MAX = x_half;
+				y_MAX = y_half;
 			}
 			if(i==1){
-				x_min = x_half;
-				y_max = y_half;
+				x_MIN = x_half;
+				y_MAX = y_half;
 			}
 			if(i==2){
-				x_max = x_half;
-				y_min = y_half;
+				x_MAX = x_half;
+				y_MIN = y_half;
 			}
 			if(i==3){
-				x_min = x_half;
-				y_min = y_half;
+				x_MIN = x_half;
+				y_MIN = y_half;
 			}
+
 			printf("Dividing \n");
 			printf("Number of particle : %d \n", (father->children[i])->N_particle);
 			print((father->children[i])->Particles);
 			printf("\n");
 			// Recursive call
-			tree_initialization(father->children[i], x_min, x_max, y_min, y_max, x, y, charge_e);
+			tree_initialization(father->children[i], x_MIN, x_MAX, y_MIN, y_MAX, x, y, charge_e);
 		}
 		
 	}		
@@ -176,7 +177,7 @@ void visualize_tree(node* Root){
 
 int main(){
 	// index of particle
-	int N = 5;
+	int N = 100;
     // Memory initialization
     double *x = (double *)malloc(N * sizeof(double));
     double *y = (double *)malloc(N * sizeof(double));
@@ -198,8 +199,8 @@ int main(){
 	random_position_distribution(x_min, x_max, y_min, y_max, x, y, N);	
 	int i;
 	// Print the table of values
-//	for(i=0;i<N;i++){printf("x_%d = %lf  ;  y_%d = %lf \n",i,x[i],i,y[i]);}
-//	getchar();
+	for(i=0;i<N;i++){printf("x_%d = %lf  ;  y_%d = %lf \n",i,x[i],i,y[i]);}
+	getchar();
 	// Initialization of the tree
 
 	for(i=0 ; i < N ; i++) Root_Particles = append(i,Root_Particles);
