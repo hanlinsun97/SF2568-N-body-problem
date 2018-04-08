@@ -35,8 +35,9 @@ double frand(double min, double max)
 void random_position_distribution(double x_min, double x_max, double y_min, double y_max, double* x, double* y, int N){
 	int i;
 	for(i=0;i<N;i++){
-		x[i] = frand(x_min,x_max);
 		y[i] = frand(y_min,y_max);
+		x[i] = frand(x_min,x_max);
+
 	}
 }
 
@@ -60,6 +61,7 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 	
 	// For every particles in the father cube
 	for(i = 0; i < N_particle; i++){
+		
 		x_i = x[Particles->index];
 		y_i = y[Particles->index];
 		// Where is the particle ? In which child subcube ? 
@@ -103,7 +105,7 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 	// Now, we need to keep dividing until all particles are alone in one cube
 	// For every subcubes (children)
 	for(i=0 ; i<4 ; i++){
-
+		getchar();
 		child = father->children[i];
 		// If the cube is empty
 		if (child->N_particle == 0){
@@ -174,7 +176,7 @@ void visualize_tree(node* Root){
 
 int main(){
 	// index of particle
-	int N = 10;
+	int N = 5;
     // Memory initialization
     double *x = (double *)malloc(N * sizeof(double));
     double *y = (double *)malloc(N * sizeof(double));
@@ -189,13 +191,17 @@ int main(){
  	double charge_e = 1;
  	
 	// Initial limits for the position distributon
-	double x_max, y_max = 1;
-	double x_min, y_min = -1;
+	double x_max=1, y_max = 1;
+	double x_min=-1, y_min = -1;
 	
 	// Position initialization 
 	random_position_distribution(x_min, x_max, y_min, y_max, x, y, N);	
-	// Initialization of the tree
 	int i;
+	// Print the table of values
+//	for(i=0;i<N;i++){printf("x_%d = %lf  ;  y_%d = %lf \n",i,x[i],i,y[i]);}
+//	getchar();
+	// Initialization of the tree
+
 	for(i=0 ; i < N ; i++) Root_Particles = append(i,Root_Particles);
 	
 	Root->Particles = Root_Particles;
@@ -203,7 +209,7 @@ int main(){
 	
 
 	tree_initialization(Root, x_min, x_max, y_min, y_max, x, y, charge_e);
-	visualize_tree(Root);
+//	visualize_tree(Root);
 	
 	return 0;
 }
