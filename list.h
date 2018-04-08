@@ -1,7 +1,7 @@
 #ifndef _LIST
 #define _LIST
 
-struct link {	int number;    struct link *next;} ;
+struct link {	int index;    struct link *next;} ;
 typedef struct link* List;
 
 int is_empty(List L);

@@ -42,41 +42,42 @@ void random_position_distribution(double x_min, double x_max, double y_min, doub
 
 
 void tree_initialization(node *father, double x_min, double x_max, double y_min, double y_max, double* x, double* y, double charge_e){
-	int i, number;
+	int i, index;
 	double x_half, y_half, x_i, y_i;
 	int N_particle = father->N_particle;
+		
 	List Particles = father->Particles;
-
+	// Memory allocation
+	for(i=0 ; i<4 ; i++){
+		father->children[i]=calloc(1, sizeof(*(father->children[i])));	
+		(father->children[i])->Particles=NULL;
+	}
 	node *child;
 	
 	// Coordinates of where we are going to cut
 	x_half = (x_max + x_min)*0.5;
 	y_half = (y_max + y_min)*0.5;
 	
-	
 	// For every particles in the father cube
 	for(i = 0; i < N_particle; i++){
-		x_i = x[Particles->number];
-		y_i = y[Particles->number];
-		
+		x_i = x[Particles->index];
+		y_i = y[Particles->index];
 		// Where is the particle ? In which child subcube ? 
-		
 		// subcube 1
 		if ( (x_i < x_half) && (y_i < y_half)){
 			
 			child = father->children[0];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
-			child->Particles = append(Particles->number,child->Particles);
+			child->Particles = append(Particles->index,child->Particles);
 		}
-		
 		// subcube 2
 		if ( (x_i >= x_half) && (y_i < y_half)){
-			
+
 			child = father->children[1];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
-			child->Particles = append(Particles->number,child->Particles);
+			child->Particles = append(Particles->index,child->Particles);
 		}
 		// subcube 3
 		if ( (x_i < x_half) && (y_i >= y_half)){
@@ -84,7 +85,7 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 			child = father->children[2];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
-			child->Particles = append(Particles->number,child->Particles);
+			child->Particles = append(Particles->index,child->Particles);
 		}
 		// subcube 4
 		if ( (x_i >= x_half) && (y_i >= y_half)){
@@ -92,17 +93,16 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 			child = father->children[3];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
-			child->Particles = append(Particles->number,child->Particles);
+			child->Particles = append(Particles->index,child->Particles);
 		}
+		
 	Particles = Particles->next;	
 	}
-
 	
 	// Now, we need to keep dividing until all particles are alone in one cube
 	// For every subcubes (children)
 	for(i=0 ; i<4 ; i++){
 		child = father->children[i];
-		
 		// If the cube is empty
 		if (child->N_particle == 0){
 			father->children[i] = NULL;
@@ -116,14 +116,14 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 			}
 			// Recovery of which particle it is
 			Particles = child->Particles;
-			number = Particles->number;
+			index = Particles->index;
 			// Setting the information
 			child->charge_node = charge_e;
 			child->x_center = x[i];
 			child->y_center = y[i];
 			
 		}
-		else {
+		else{
 			// Rewriting the new subcubes boundaries
 			if(i==0){
 				x_max = x_half;
@@ -148,12 +148,20 @@ void tree_initialization(node *father, double x_min, double x_max, double y_min,
 }
 
 void visualize_tree(node* Root){
+	printf("Root \n");
 	print(Root->Particles);	
+
+	node* child1 = Root->children[0];
+	node* child2 = Root->children[1];
+	node* child3 = Root->children[2];
+	node* child4 = Root->children[3];
+	
+
 }
 
 int main(){
-	// Number of particle
-	int N = 30;
+	// index of particle
+	int N = 10;
     // Memory initialization
     double *x = (double *)malloc(N * sizeof(double));
     double *y = (double *)malloc(N * sizeof(double));
@@ -161,10 +169,10 @@ int main(){
     double *v_y = (double *)malloc(N * sizeof(double));
     double *force_x = (double *)calloc(N, sizeof(double));
     double *force_y = (double *)calloc(N, sizeof(double));
-    List Root_Particles = calloc(1,sizeof(*Root_Particles));
+    List Root_Particles = NULL;
     node* Root = calloc(1, sizeof(*Root));
     
-    // charge of 1 electron
+        // charge of 1 electron
  	double charge_e = 1;
  	
 	// Initial limits for the position distributon
@@ -176,8 +184,13 @@ int main(){
 	// Initialization of the tree
 	int i;
 	for(i=0 ; i < N ; i++) Root_Particles = append(i,Root_Particles);
-	Root->Particles = Root_Particles;
+	print(Root_Particles);
 	
+	Root->Particles = Root_Particles;
+	Root->N_particle = N;
+	
+	printf("%d \n",Root->N_particle);
+
 	tree_initialization(Root, x_min, x_max, y_min, y_max, x, y, charge_e);
 	visualize_tree(Root);
 	
