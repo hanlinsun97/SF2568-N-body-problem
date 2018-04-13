@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 #include "list.h"
 
 
@@ -232,7 +233,7 @@ void compute_force(node* father, int index, double* force_x, double* force_y, do
 
 int main(){
 	// index of particle
-	int t, i, N = 5;
+	int t, i, N=10;
     // Memory initialization
     double *x = (double *)calloc(N, sizeof(double));
     double *y = (double *)calloc(N, sizeof(double));
@@ -252,9 +253,11 @@ int main(){
 	// Time step 
 	double dt = 0.01;
 	int N_t = 100;
+	// Time measurement
+	clock_t begin = clock();
 	
 	// Cluster approximation parameter
-	double parameter = 1;
+	double parameter = 0.5;
  	
 	// Initial limits for the position distributon
 	double x_max=10, y_max = 10;
@@ -263,13 +266,12 @@ int main(){
 	// Position initialization 
 	random_position_distribution(x_min, x_max, y_min, y_max, x, y, N);	
 	
-	// Writing initial positions
-	FILE *fp = fopen("/Users/pyl/Desktop/ParallelProject/positions.txt", "w");
-	// The first line contains : N, dt, N_t
-	fprintf(fp,"%d, %f, %d\n",N,dt,N_t);
+//	 Writing initial positions
+	FILE *fp = fopen("/Users/pyl/Desktop/ParallelProject/positions_initial.txt", "w");
     for (i= 0; i < N; i++){
         fprintf(fp, "%f, %f\n", x[i], y[i]);
     }
+    fclose(fp);
 
 
 	// Initialization of the root
@@ -319,16 +321,22 @@ int main(){
 		Root->y_max = y_max;
 		Root->x_min = x_min;
 		Root->y_min = y_min;
-		// Writing results
-		for (i = 0; i < N; i++){
-        	fprintf(fp, "%f, %f\n", x[i], y[i]);
-    	}
+		
 	}
 	
-    fclose(fp);
+	//	 Writing initial positions
+	FILE *fp1 = fopen("/Users/pyl/Desktop/ParallelProject/positions_final.txt", "w");
+    for (i= 0; i < N; i++){
+        fprintf(fp1, "%f, %f\n", x[i], y[i]);
+    }
+    fclose(fp1);
 
+	// Time measurement
+	clock_t end = clock();
+	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	printf("Time spent for N = %d particles : %lf \n",N,time_spent);
 	
-	    //Free memory
+    //Free memory
     free(x);
     free(y);
     free(x_new);
