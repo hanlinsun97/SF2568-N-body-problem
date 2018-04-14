@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
+
 #include "list.h"
 
 
@@ -233,8 +234,14 @@ void compute_force(node* father, int index, double* force_x, double* force_y, do
 
 int main(){
 	// index of particle
-	int t, i, N=10;
+	int t, i, N;
+	float duration;
+	FILE *fp = fopen("sequential_position.txt", "w");
+	struct timeval start;
+	struct timeval end;
     // Memory initialization
+	for(N=0;N<10000;N++){
+	if(N%50==0){
     double *x = (double *)calloc(N, sizeof(double));
     double *y = (double *)calloc(N, sizeof(double));
     double *x_new = (double *)calloc(N, sizeof(double));
@@ -252,10 +259,10 @@ int main(){
  	
 	// Time step 
 	double dt = 0.01;
-	int N_t = 100;
+	int N_t = 1;
 	// Time measurement
-	clock_t begin = clock();
-	
+//	clock_t begin = clock();
+
 	// Cluster approximation parameter
 	double parameter = 0.5;
  	
@@ -265,13 +272,13 @@ int main(){
 	
 	// Position initialization 
 	random_position_distribution(x_min, x_max, y_min, y_max, x, y, N);	
-	
+	gettimeofday(&start, NULL);
 //	 Writing initial positions
-	FILE *fp = fopen("/Users/pyl/Desktop/ParallelProject/positions_initial.txt", "w");
-    for (i= 0; i < N; i++){
-        fprintf(fp, "%f, %f\n", x[i], y[i]);
-    }
-    fclose(fp);
+//	FILE *fp = fopen("/Users/iconoclast/Desktop/positions_initial.txt", "w");
+//    for (i= 0; i < N; i++){
+//        fprintf(fp, "%f, %f\n", x[i], y[i]);
+//    }
+//    fclose(fp);
 
 
 	// Initialization of the root
@@ -290,6 +297,9 @@ int main(){
 	for(t=0;t<N_t;t++){
 		// Initialization of the tree
 		tree_initialization(Root, x, y);
+		gettimeofday(&end,NULL);
+		duration = (1000000.0*(end.tv_sec-start.tv_sec)+end.tv_usec-start.tv_usec)/1000000.0;
+		
 		for(i=0;i<N;i++){
 			// Computing the force for parameter i with the parameter "parameter"
 			compute_force(Root, i, force_x, force_y, x, y, parameter);
@@ -325,16 +335,14 @@ int main(){
 	}
 	
 	//	 Writing initial positions
-	FILE *fp1 = fopen("/Users/pyl/Desktop/ParallelProject/positions_final.txt", "w");
-    for (i= 0; i < N; i++){
-        fprintf(fp1, "%f, %f\n", x[i], y[i]);
-    }
-    fclose(fp1);
+	//FILE *fp1 = fopen("/Users/pyl/Desktop/ParallelProject/positions_final.txt", "w");
+    //for (i= 0; i < N; i++){
+     //   fprintf(fp1, "%f, %f\n", x[i], y[i]);
+    //}
+   // fclose(fp1);
 
-	// Time measurement
-	clock_t end = clock();
-	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-	printf("Time spent for N = %d particles : %lf \n",N,time_spent);
+	printf("time is %f, N = %d\n", duration, N);
+	fprintf(fp,"%f,%d\n", duration, N);
 	
     //Free memory
     free(x);
@@ -345,5 +353,8 @@ int main(){
     free(v_y);
     free(force_x);
     free(force_y);
+    }
+}
+	fclose(fp);
 	return 0;
 }
