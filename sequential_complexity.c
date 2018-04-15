@@ -245,10 +245,10 @@ int main(){
 	// Time step 
 	double dt = 0.01;
 	// Number of test for complexity
-	int N_complexity = 100;
+	int N_complexity = 200;
 
 	// Cluster approximation parameter
-	double parameter = 0.5;
+	double parameter = 1;
  	
 	// Initial limits for the position distributon
 	double x_max=10, y_max = 10;
