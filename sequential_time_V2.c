@@ -57,6 +57,7 @@ void tree_initialization(node *father, double* x, double* y){
 	for(i=0 ; i<4 ; i++){
 		father->children[i]=calloc(1, sizeof(*(father->children[i])));	
 		(father->children[i])->Particles=NULL;
+		(father->children[i])->EndParticle=NULL;
 	}
 	node *child;
 	
@@ -76,7 +77,7 @@ void tree_initialization(node *father, double* x, double* y){
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
 			child->EndParticle = append(Particles->index,child->EndParticle);
-			child->EndParticle = (child->EndParticle)->next;
+			if(child->N_particle > 1) child->EndParticle = (child->EndParticle)->next;
 			// We need a beginning for our Particle list
 			if(child->N_particle == 1) child->Particles = child->EndParticle;
 		}
@@ -86,7 +87,7 @@ void tree_initialization(node *father, double* x, double* y){
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
 			child->EndParticle = append(Particles->index,child->EndParticle);
-			child->EndParticle = (child->EndParticle)->next;
+			if(child->N_particle > 1) child->EndParticle = (child->EndParticle)->next;
 			// We need a beginning for our Particle list
 			if(child->N_particle == 1) child->Particles = child->EndParticle;
 		}
@@ -96,7 +97,7 @@ void tree_initialization(node *father, double* x, double* y){
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
 			child->EndParticle = append(Particles->index,child->EndParticle);
-			child->EndParticle = (child->EndParticle)->next;
+			if(child->N_particle > 1) child->EndParticle = (child->EndParticle)->next;
 			// We need a beginning for our Particle list
 			if(child->N_particle == 1) child->Particles = child->EndParticle;
 		}
@@ -106,7 +107,7 @@ void tree_initialization(node *father, double* x, double* y){
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
 			child->EndParticle = append(Particles->index,child->EndParticle);
-			child->EndParticle = (child->EndParticle)->next;
+			if(child->N_particle > 1) child->EndParticle = (child->EndParticle)->next;
 			// We need a beginning for our Particle list
 			if(child->N_particle == 1) child->Particles = child->EndParticle;
 		}
@@ -258,8 +259,9 @@ int main(){
     double *v_y = (double *)calloc(N, sizeof(double));
     double *force_x = (double *)calloc(N, sizeof(double));
     double *force_y = (double *)calloc(N, sizeof(double));
-    List Root_Particles = NULL;
     node* Root = calloc(1, sizeof(*Root));
+    Root->EndParticle = NULL;
+
     
     // Electron properties
  	double charge_e = 1;
@@ -292,9 +294,12 @@ int main(){
 	// Initialization of the root
 	for(i=0 ; i < N ; i++){
 		Root->EndParticle = append(i,Root->EndParticle);
-		Root->EndParticle = (Root->EndParticle)->next;
+		if(i==0) Root->Particles = Root->EndParticle;
+		if(i!=0) Root->EndParticle = (Root->EndParticle)->next;
+
 	}
-	Root->Particles = Root_Particles;
+	print(Root->Particles);
+	getchar();
 	Root->N_particle = N;
 	Root->x_max = x_max;
 	Root->y_max = y_max;
@@ -308,6 +313,7 @@ int main(){
 	for(t=0;t<N_t;t++){
 		// Initialization of the tree
 		tree_initialization(Root, x, y);
+		printf("step %d \n",t);
 		for(i=0;i<N;i++){
 			// Computing the force for parameter i with the parameter "parameter"
 			compute_force(Root, i, force_x, force_y, x, y, parameter);
