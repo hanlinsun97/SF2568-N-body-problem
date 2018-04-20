@@ -17,6 +17,7 @@ struct node
 	// N_particle is the number of particles in the subcube
 	// List Particles is a list containing the number "i" of the particles contained in the subcube
 	List Particles;
+	List EndParticle;
 	int N_particle;
 
 };
@@ -40,7 +41,6 @@ void random_position_distribution(double x_min, double x_max, double y_min, doub
 	}
 }
 
-
 void tree_initialization(node *father, double *x, double *y)
 {
 	int i, j;
@@ -53,6 +53,7 @@ void tree_initialization(node *father, double *x, double *y)
 	{
 		father->children[i] = calloc(1, sizeof(*(father->children[i])));
 		(father->children[i])->Particles = NULL;
+		(father->children[i])->EndParticle = NULL;
 	}
 	node *child;
 
@@ -73,7 +74,12 @@ void tree_initialization(node *father, double *x, double *y)
 			child = father->children[0];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
-			child->Particles = append(Particles->index, child->Particles);
+			child->EndParticle = append(Particles->index, child->EndParticle);
+			if (child->N_particle > 1)
+				child->EndParticle = (child->EndParticle)->next;
+			// We need a beginning for our Particle list
+			if (child->N_particle == 1)
+				child->Particles = child->EndParticle;
 		}
 		// subcube 2
 		if ((x_i >= x_half) && (y_i < y_half))
@@ -81,7 +87,12 @@ void tree_initialization(node *father, double *x, double *y)
 			child = father->children[1];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
-			child->Particles = append(Particles->index, child->Particles);
+			child->EndParticle = append(Particles->index, child->EndParticle);
+			if (child->N_particle > 1)
+				child->EndParticle = (child->EndParticle)->next;
+			// We need a beginning for our Particle list
+			if (child->N_particle == 1)
+				child->Particles = child->EndParticle;
 		}
 		// subcube 3
 		if ((x_i < x_half) && (y_i >= y_half))
@@ -89,7 +100,12 @@ void tree_initialization(node *father, double *x, double *y)
 			child = father->children[2];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
-			child->Particles = append(Particles->index, child->Particles);
+			child->EndParticle = append(Particles->index, child->EndParticle);
+			if (child->N_particle > 1)
+				child->EndParticle = (child->EndParticle)->next;
+			// We need a beginning for our Particle list
+			if (child->N_particle == 1)
+				child->Particles = child->EndParticle;
 		}
 		// subcube 4
 		if ((x_i >= x_half) && (y_i >= y_half))
@@ -97,7 +113,12 @@ void tree_initialization(node *father, double *x, double *y)
 			child = father->children[3];
 			child->N_particle = child->N_particle + 1; // 1 more particle
 			// Now we add the particle to the list of particles included in the subcube 1
-			child->Particles = append(Particles->index, child->Particles);
+			child->EndParticle = append(Particles->index, child->EndParticle);
+			if (child->N_particle > 1)
+				child->EndParticle = (child->EndParticle)->next;
+			// We need a beginning for our Particle list
+			if (child->N_particle == 1)
+				child->Particles = child->EndParticle;
 		}
 
 		Particles = Particles->next;
@@ -107,7 +128,6 @@ void tree_initialization(node *father, double *x, double *y)
 	// For every subcubes (children)
 	for (i = 0; i < 4; i++)
 	{
-
 		// We need this otherwise, in the part where we change the boundaries for the children, one child will modify the boundaries of the other child
 		x_MAX = father->x_max;
 		y_MAX = father->y_max;
@@ -412,7 +432,11 @@ int main(int argc, char* argv[])
 	// Initialization of the first root
 	for (i = 0; i < N; i++)
 	{
-		Root_Particles = append(i, Root_Particles);
+		Root->EndParticle = append(i, Root->EndParticle);
+		if (i == 0)
+			Root->Particles = Root->EndParticle;
+		if (i != 0)
+			Root->EndParticle = (Root->EndParticle)->next;
 	}
 	Root->Particles = Root_Particles;
 	Root->N_particle = N;
@@ -431,7 +455,9 @@ int main(int argc, char* argv[])
 	for (t = 0; t < N_t; t++)
 	{
 		// Initialization of the tree : every process are going to construct the tree
+		if (myid==0){
 		tree_initialization(Root, x, y);
+		}
 		
 		
 		// Data partitioning 
@@ -461,7 +487,8 @@ int main(int argc, char* argv[])
 		
 		// Waiting for all process to finish their step
 		MPI_Barrier(MPI_COMM_WORLD);
-	}
+		
+	//}
 
 	//Free memory
 	free(x);
