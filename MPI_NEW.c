@@ -372,6 +372,8 @@ void update_boundaries_resetForces(double *x, double *y, double *x_new, double *
     {
         x[i] = x_new[i];
         y[i] = y_new[i];
+        x_new[i] = 0;
+        y_new[i] = 0;
 
         // We also use this loop to reset the values of the forces
         force_x[i] = 0;
@@ -410,6 +412,7 @@ int main(int argc, char *argv[])
     // index of particle
     
     int t, i, N;
+   
     int myid, numprocess;
     int tag = 10;
     MPI_Init(&argc, &argv);
@@ -417,7 +420,8 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &numprocess);
     
     MPI_Status status;
- 
+    for (N = 10000; N < 10001; N++)
+    {
         // Memory initialization
         double *x = (double *)calloc(N, sizeof(double));
         double *y = (double *)calloc(N, sizeof(double));
@@ -436,13 +440,13 @@ int main(int argc, char *argv[])
 
         // Time step
         double dt = 0.01;
-        int N_t = 100;
+        int N_t = 10;
         // Time measurement
 
         // Cluster approximation parameter
         double parameter = 0.5;
 
-        // Initial limits for the position distributon
+        // Initial limits for the position distribution
         double x_max = 10, y_max = 10;
         double x_min = -10, y_min = -10;
 
@@ -486,14 +490,23 @@ int main(int argc, char *argv[])
             tree_initialization(Root, x, y);
 
             // Data partitioning
+            if (myid == 0)
+            {
+                printf("%f, %f\n", x[0], y[0]);
+            }
             for (i = myid * N_p; i < (myid + 1) * N_p; i++)
             {
                 // Computing the force for parameter i with the parameter "parameter"
                 compute_force(Root, i, force_x, force_y, x, y, parameter);
                 // Updating the position + velocity
                 update_position_velocity(x, y, x_new, y_new, v_x, v_y, force_x, force_y, dt, i);
+                
             }
-
+            if (myid == 0)
+            {
+                printf("%f, %f\n", x_new[0], y_new[0]);
+            }
+            getchar();
             // Rest of the data to compute : only for some processes
             if (myid < R_p)
             {
@@ -502,16 +515,31 @@ int main(int argc, char *argv[])
                 compute_force(Root, i, force_x, force_y, x, y, parameter);
                 // Updating the position + velocity
                 update_position_velocity(x, y, x_new, y_new, v_x, v_y, force_x, force_y, dt, i);
+                
             }
-
+            
+            
             // Recursive doubling here
+            if (myid == 0)
+            {
+                printf("%f, %f\n", x_new[0], y_new[0]);
+            }
             recursive_doubling(myid, x, y, x_new, y_new, v_x, v_y, numprocess, N, N_p, R_p, tag);
-
+            if (myid == 0)
+            {
+                printf("%f, %f\n", x_new[0], y_new[0]);
+            }
             // Finally updating the root boundaries and reseting forces values
             update_boundaries_resetForces(x, y, x_new, y_new, force_x, force_y, N, Root);
+            
+            
 
             // Waiting for all process to finish their step
             MPI_Barrier(MPI_COMM_WORLD);
+            if (myid == 0)
+            {
+                printf("position, t, %f, %d\n", x[1], t);
+            }
             clock_t end = clock();
             double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
             if(myid==0){
@@ -528,6 +556,7 @@ int main(int argc, char *argv[])
             free(v_y);
             free(force_x);
             free(force_y);
+    }
             MPI_Finalize();
     
         return 0;
