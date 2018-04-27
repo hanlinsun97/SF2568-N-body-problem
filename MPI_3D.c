@@ -72,7 +72,7 @@ void tree_initialization(node *father, double *x, double *y, double *z)
         x_i = x[Particles->index];
         y_i = y[Particles->index];
         z_i = z[Particles->index];
-        
+
         // Where is the particle ? In which child subcube ?
         // subcube 1
         if ((x_i < x_half) && (y_i < y_half) && (z_i < z_half))
@@ -193,7 +193,7 @@ void tree_initialization(node *father, double *x, double *y, double *z)
         y_MIN = father->y_min;
         z_MAX = father->z_max;
         z_MIN = father->z_min;
-        
+
         child = father->children[i];
 
         // If the cube is empty
@@ -349,9 +349,9 @@ void compute_force(node *father, int index, double *force_x, double *force_y,dou
             if ((father->N_particle > 1) || ((father->Particles)->index != index))
             {
                 // Actualize forces
-                force_x[index] = force_x[index] + sign_x. / (r_x * r_x);
-                force_y[index] = force_y[index] + sign_y. / (r_y * r_y);
-                force_z[index] = force_z[index] + sign_z. / (r_z * r_z);
+                force_x[index] = force_x[index] + sign_x / (r_x * r_x);
+                force_y[index] = force_y[index] + sign_y / (r_y * r_y);
+                force_z[index] = force_z[index] + sign_z / (r_z * r_z);
             }
         }
         else
@@ -480,7 +480,7 @@ void recursive_doubling(int myid, double *x, double *y,double *z, double *x_new,
     }
 }
 
-void update_boundaries_resetForces(double *x, double *y, double *z, double *x_new, double *y_new, double *z_new, double *force_x, double *force_y, double *force_z, int N, node *Root)
+void update_boundaries_resetForces(double *x, double *y, double *z, double *x_new, double *y_new, double *z_new, double *force_x, double *force_y, double *force_z, int N, node *Root, double *E_new, double *E)
 {
     // We are going to need the max and min for boundaries!
     double x_max = x[0];
@@ -495,9 +495,11 @@ void update_boundaries_resetForces(double *x, double *y, double *z, double *x_ne
         x[i] = x_new[i];
         y[i] = y_new[i];
         z[i] = z_new[i];
+        E[i] = E_new[i];
         x_new[i] = 0;
         y_new[i] = 0;
         z_new[i] = 0;
+        E_new[i] = 0;
 
         // We also use this loop to reset the values of the forces
         force_x[i] = 0;
@@ -532,10 +534,10 @@ void update_position_velocity(double *x, double *y, double *z, double *x_new, do
     v_x[i] = v_x[i] + force_x[i] * dt;
     v_y[i] = v_y[i] + force_y[i] * dt;
     v_z[i] = v_z[i] + force_z[i] * dt;
-    
+
     E[i] = 0.5 * m_e * (v_x[i]*v_x[i] + v_y[i]*v_y[i] + v_z[i]*v_z[i]);
     E_new[i] = 0.5 * m_e * (v_x[i]*v_x[i] + v_y[i]*v_y[i] + v_z[i]*v_z[i]);
-    
+
     x_new[i] = x[i] + v_x[i] * dt;
     y_new[i] = y[i] + v_y[i] * dt;
     z_new[i] = z[i] + v_z[i] * dt;
@@ -578,21 +580,27 @@ int main(int argc, char *argv[])
         node *Root = calloc(1, sizeof(*Root));
         Root->EndParticle = NULL;
 
+        //Initial velocity
+        for(i=0;i<N;i++){
+          v_x[i] = 100;
+        }
+
+
         // Electron properties
         double charge_e = 1;
         double m_e = 1;
 
         // Time step
-        double dt = 0.001;
+        double dt = 0.0000001;
         int N_t = 1;
         // Time measurement
 
         // Cluster approximation parameter
-        double parameter = 0.5;
+        double parameter = 0.2;
 
         // Initial limits for the position distribution
         double x_max = 10, y_max = 10, z_max = 10;
-        double x_min = -10, y_min = -10, z_min = -10;;
+        double x_min = -10, y_min = -10, z_min = -10;
 
 
         clock_t begin = clock();
@@ -646,7 +654,7 @@ int main(int argc, char *argv[])
 
                // printf("%f, %f\n", x[0], y[0]);
             }
-            
+
             // Rest of the data to compute : only for some processes
             if (myid < R_p)
             {
@@ -663,7 +671,7 @@ int main(int argc, char *argv[])
             recursive_doubling(myid, x, y, z, x_new, y_new, z_new, v_x, v_y, v_z, numprocess, N, N_p, R_p, tag, E, E_new);
 
             // Finally updating the root boundaries and reseting forces values
-            update_boundaries_resetForces(x, y, z, x_new, y_new, z_new, force_x, force_y, force_z, N, Root);
+            update_boundaries_resetForces(x, y, z, x_new, y_new, z_new, force_x, force_y, force_z, N, Root, E_new, E);
 
 
 
