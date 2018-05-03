@@ -13,7 +13,7 @@ struct node
     // They are centered in :
     double x_center, y_center, z_center;
     // They are clustered in :
-    double x_min, x_max, y_min, y_max,z_min, z_max;
+    double x_min, x_max, y_min, y_max, z_min, z_max;
     // N_particle is the number of particles in the subcube
     // List Particles is a list containing the number "i" of the particles contained in the subcube
     List Particles;
@@ -34,7 +34,7 @@ double frand(double min, double max)
 }
 
 // Function to distribute randomly the initial positions of the particles in a 2D square limited by (x_max, y_max, x_min, y_min).
-void random_position_distribution(double x_min, double x_max, double y_min, double y_max,double z_min, double z_max, double *x, double *y, double *z,int N)
+void random_position_distribution(double x_min, double x_max, double y_min, double y_max, double z_min, double z_max, double *x, double *y, double *z, int N)
 {
     int i;
     for (i = 0; i < N; i++)
@@ -72,6 +72,7 @@ void tree_initialization(node *father, double *x, double *y, double *z)
         x_i = x[Particles->index];
         y_i = y[Particles->index];
         z_i = z[Particles->index];
+
         // Where is the particle ? In which child subcube ?
         // subcube 1
         if ((x_i < x_half) && (y_i < y_half) && (z_i < z_half))
@@ -190,6 +191,9 @@ void tree_initialization(node *father, double *x, double *y, double *z)
         y_MAX = father->y_max;
         x_MIN = father->x_min;
         y_MIN = father->y_min;
+        z_MAX = father->z_max;
+        z_MIN = father->z_min;
+
         child = father->children[i];
 
         // If the cube is empty
@@ -212,6 +216,7 @@ void tree_initialization(node *father, double *x, double *y, double *z)
             // Setting the information
             child->x_center = x[Particles->index];
             child->y_center = y[Particles->index];
+            child->z_center = z[Particles->index];
             // Changing the boundaries ? or make a condition when there is only 1 particles when computing the forces
         }
         if ((child->N_particle > 1) && (child != NULL))
@@ -329,7 +334,7 @@ void compute_force(node *father, int index, double *force_x, double *force_y,dou
         double r_z = father->z_center - z[index];
 
         //Compute the direction of the Force
-        double sign_x = 1, sign_y = 1,sign_z = 1;
+        double sign_x = 1, sign_y = 1, sign_z = 1;
         if(r_x>0) sign_x = -1;
         if(r_y>0) sign_y = -1;
         if(r_z>0) sign_z = -1;
@@ -424,10 +429,9 @@ void recursive_doubling(int myid, double *x, double *y,double *z, double *x_new,
             // To avoid deadlocks :
 
             MPI_Sendrecv(x_new, N, MPI_DOUBLE, bitflip(myid, flip), tag, x, N, MPI_DOUBLE, bitflip(myid, flip), tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
             MPI_Sendrecv(y_new, N, MPI_DOUBLE, bitflip(myid, flip), tag, y, N, MPI_DOUBLE, bitflip(myid, flip), tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            MPI_Sendrecv(z_new, N, MPI_DOUBLE, bitflip(myid, flip), tag, y, N, MPI_DOUBLE, bitflip(myid, flip), tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            MPI_Sendrecv(E_new, N, MPI_DOUBLE, bitflip(myid, flip), tag, y, N, MPI_DOUBLE, bitflip(myid, flip), tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Sendrecv(z_new, N, MPI_DOUBLE, bitflip(myid, flip), tag, z, N, MPI_DOUBLE, bitflip(myid, flip), tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Sendrecv(E_new, N, MPI_DOUBLE, bitflip(myid, flip), tag, E, N, MPI_DOUBLE, bitflip(myid, flip), tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
             for (i = 0; i < N; i++)
             {
@@ -476,7 +480,7 @@ void recursive_doubling(int myid, double *x, double *y,double *z, double *x_new,
     }
 }
 
-void update_boundaries_resetForces(double *x, double *y, double *z, double *x_new, double *y_new, double *z_new, double *force_x, double *force_y, double *force_z, int N, node *Root)
+void update_boundaries_resetForces(double *x, double *y, double *z, double *x_new, double *y_new, double *z_new, double *force_x, double *force_y, double *force_z, int N, node *Root, double *E_new, double *E)
 {
     // We are going to need the max and min for boundaries!
     double x_max = x[0];
@@ -491,9 +495,11 @@ void update_boundaries_resetForces(double *x, double *y, double *z, double *x_ne
         x[i] = x_new[i];
         y[i] = y_new[i];
         z[i] = z_new[i];
+        E[i] = E_new[i];
         x_new[i] = 0;
         y_new[i] = 0;
         z_new[i] = 0;
+        E_new[i] = 0;
 
         // We also use this loop to reset the values of the forces
         force_x[i] = 0;
@@ -528,8 +534,10 @@ void update_position_velocity(double *x, double *y, double *z, double *x_new, do
     v_x[i] = v_x[i] + force_x[i] * dt;
     v_y[i] = v_y[i] + force_y[i] * dt;
     v_z[i] = v_z[i] + force_z[i] * dt;
+
     E[i] = 0.5 * m_e * (v_x[i]*v_x[i] + v_y[i]*v_y[i] + v_z[i]*v_z[i]);
     E_new[i] = 0.5 * m_e * (v_x[i]*v_x[i] + v_y[i]*v_y[i] + v_z[i]*v_z[i]);
+
     x_new[i] = x[i] + v_x[i] * dt;
     y_new[i] = y[i] + v_y[i] * dt;
     z_new[i] = z[i] + v_z[i] * dt;
@@ -572,21 +580,27 @@ int main(int argc, char *argv[])
         node *Root = calloc(1, sizeof(*Root));
         Root->EndParticle = NULL;
 
+        //Initial velocity
+        for(i=0;i<N;i++){
+          v_x[i] = 100;
+        }
+
+
         // Electron properties
         double charge_e = 1;
         double m_e = 1;
 
         // Time step
-        double dt = 0.001;
+        double dt = 0.0000001;
         int N_t = 1;
         // Time measurement
 
         // Cluster approximation parameter
-        double parameter = 0.1;
+        double parameter = 0.2;
 
         // Initial limits for the position distribution
         double x_max = 10, y_max = 10, z_max = 10;
-        double x_min = -10, y_min = -10, z_min = -10;;
+        double x_min = -10, y_min = -10, z_min = -10;
 
 
         clock_t begin = clock();
@@ -640,6 +654,7 @@ int main(int argc, char *argv[])
 
                // printf("%f, %f\n", x[0], y[0]);
             }
+
             // Rest of the data to compute : only for some processes
             if (myid < R_p)
             {
@@ -656,7 +671,7 @@ int main(int argc, char *argv[])
             recursive_doubling(myid, x, y, z, x_new, y_new, z_new, v_x, v_y, v_z, numprocess, N, N_p, R_p, tag, E, E_new);
 
             // Finally updating the root boundaries and reseting forces values
-            update_boundaries_resetForces(x, y, z, x_new, y_new, z_new, force_x, force_y, force_z, N, Root);
+            update_boundaries_resetForces(x, y, z, x_new, y_new, z_new, force_x, force_y, force_z, N, Root, E_new, E);
 
 
 
@@ -668,7 +683,7 @@ int main(int argc, char *argv[])
 				        FILE *fp = fopen("output.txt","a");
 
                 for(i=0;i<N;i++){
-					         fprintf(fp,"%d, %f, %f, %f, %f\n",i, x[i],y[i], z[i], E[i]);
+					         fprintf(fp,"%d, %f, %f, %f, %f\n",i, x[i], y[i], z[i], E[i]);
 
 				        }
 			          fclose(fp);
