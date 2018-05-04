@@ -32,9 +32,24 @@ double frand(double min, double max)
 {
     return min + (max - min) * rand() / RAND_MAX;
 }
-
-// Function to distribute randomly the initial positions of the particles in a 2D square limited by (x_max, y_max, x_min, y_min).
-void random_position_distribution(double x_min, double x_max, double y_min, double y_max, double *x, double *y, int N)
+void square(double x_min, double x_max, double y_min, double y_max, double *x, double *y, int N){
+    int i = 0;
+    int j = 0;
+    double x_ele = x_min;
+    double y_ele = y_min;
+    for(i=0;i<100;i++){
+        for(j=0;j<100;j++){
+            x[i*100+j] = x_ele;
+            y[i*100+j] = y_ele;
+            y_ele = (y_max - y_min) / 100 + y_ele;
+            printf("%d\n",i*100+j);
+        }
+    x_ele = (x_max - x_min) / 100 + x_ele;
+    y_ele = y_min;
+    }
+}
+    // Function to distribute randomly the initial positions of the particles in a 2D square limited by (x_max, y_max, x_min, y_min).
+    void random_position_distribution(double x_min, double x_max, double y_min, double y_max, double *x, double *y, int N)
 {
     int i;
     for (i = 0; i < N; i++)
@@ -240,9 +255,20 @@ void compute_force(node *father, int index, double *force_x, double *force_y, do
 
         double r_x = father->x_center - x[index];
         double r_y = father->y_center - y[index];
-
+       
         // Distance between center and particle we are interesting into
         double r = sqrt(r_x * r_x + r_y * r_y);
+        printf("r = %f", r);
+        double sign_x = 1;
+        double sign_y = 1;
+       
+        if(r_x > 0){
+            sign_x = -1;
+        }
+        if(r_y > 0){
+            sign_y = -1;
+        }
+        
 
         // If the cluster approximation is valid or it is a single particle
         if ((r * parameter >= d) || (father->N_particle == 1))
@@ -251,8 +277,8 @@ void compute_force(node *father, int index, double *force_x, double *force_y, do
             if ((father->N_particle > 1) || ((father->Particles)->index != index))
             {
                 // Actualize forces
-                force_x[index] = force_x[index] + 1. / (r_x * r_x);
-                force_y[index] = force_y[index] + 1. / (r_y * r_y);
+                force_x[index] = force_x[index] + sign_x * father->N_particle / (r_x * r_x);
+                force_y[index] = force_y[index] + sign_y * father->N_particle / (r_y * r_y);
             }
         }
         else
@@ -441,11 +467,11 @@ int main(int argc, char *argv[])
 
         // Time step
         double dt = 0.01;
-        int N_t = 5;
+        int N_t = 10;
         // Time measurement
 
         // Cluster approximation parameter
-        double parameter = 0.5;
+        double parameter = 0;
 
         // Initial limits for the position distribution
         double x_max = 10, y_max = 10;
@@ -454,7 +480,8 @@ int main(int argc, char *argv[])
         clock_t begin = clock();
 
         // Position initialization
-        random_position_distribution(x_min, x_max, y_min, y_max, x, y, N);
+       // random_position_distribution(x_min, x_max, y_min, y_max, x, y, N);
+        square(x_min, x_max, y_min, y_max,x, y, N);
 
         //	 Writing initial positions
         //	FILE *fp = fopen("/Users/pyl/Desktop/ParallelProject/positions_initial.txt", "w");
@@ -462,6 +489,9 @@ int main(int argc, char *argv[])
         //        fprintf(fp, "%f, %f\n", x[i], y[i]);
         //    }
         //    fclose(fp);
+        for(i=0;i<10000;i++){
+            printf("%f, %f\n", x[i],y[i]);
+        }
 
         // Initialization of the root
         for (i = 0; i < N; i++)
@@ -487,9 +517,9 @@ int main(int argc, char *argv[])
         for (t = 0; t < N_t; t++)
         {
             // Initialization of the tree : every process are going to construct the tree
-
+            printf("Here Start\n");
             tree_initialization(Root, x, y);
-
+            
             // Data partitioning
             for (i = myid * N_p; i < (myid + 1) * N_p; i++)
             {
@@ -513,8 +543,9 @@ int main(int argc, char *argv[])
             
             
             // Recursive doubling here
+            printf("Here 1\n");
             recursive_doubling(myid, x, y, x_new, y_new, v_x, v_y, numprocess, N, N_p, R_p, tag);
-           
+            printf("Here 2\n");
             // Finally updating the root boundaries and reseting forces values
             update_boundaries_resetForces(x, y, x_new, y_new, force_x, force_y, N, Root);
             
@@ -536,6 +567,7 @@ int main(int argc, char *argv[])
             if(myid==0){
             printf("Time spent for N = %d particles : %lf \n", N, time_spent);
             }
+            
         }
     
             //Free memory
