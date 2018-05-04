@@ -5,7 +5,7 @@
 #include "list.h"
 #include <mpi.h>
 
-// Structure defining a node in the tree
+// Structure definp �2ing a node in the tree
 struct node
 {
     // In 2D each node has up to 4 children
@@ -32,6 +32,25 @@ double frand(double min, double max)
 {
     return min + (max - min) * rand() / RAND_MAX;
 }
+void square(double x_min, double x_max, double y_min, double y_max, double *x, double *y, int N)
+{
+    int i = 0;
+    int j = 0;
+    double x_ele = x_min;
+    double y_ele = y_min;
+    for (i = 0; i < (int)sqrt(N); i++)
+    {
+        for (j = 0; j < (int)sqrt(N); j++)
+        {
+            x[i * (int)sqrt(N) + j] = x_ele;
+            y[i * (int)sqrt(N) + j] = y_ele;
+            y_ele = (y_max - y_min) / (int)sqrt(N) + y_ele;
+            //     printf("%d\n",i*100+j);
+        }
+        x_ele = (x_max - x_min) / (int)sqrt(N) + x_ele;
+        y_ele = y_min;
+    }
+}
 
 // Function to distribute randomly the initial positions of the particles in a 2D square limited by (x_max, y_max, x_min, y_min).
 void random_position_distribution(double x_min, double x_max, double y_min, double y_max, double *x, double *y, int N)
@@ -39,47 +58,17 @@ void random_position_distribution(double x_min, double x_max, double y_min, doub
     int i;
     for (i = 0; i < N; i++)
     {
-        y[i] = frand(y_min, y_max);
-        x[i] = frand(x_min, x_max);
+		double R = (x_max - x_min) / 2;
+		double theta = frand(0,360);
+		double k = frand(0,1);
+		double r = sqrt(k)*R;
+		x[i] = r * sin(theta);
+		y[i] = r * cos(theta);
+       // y[i] = frand(y_min, y_max);
+       // x[i] = frand(x_min, x_max);
     }
 }
 
-int circle_distribution(double min, double max, double* x1,double* y1,double* x2, double*y2, double dx,double dy,int N)
-	{
-    //Square first
-    int j = 0;
-    int i = 0;
-    double x_ele;
-    double y_ele;
-    double z_ele;
-
-    for(x_ele = min; x_ele < max; x_ele = x_ele + dx){  
-        for (y_ele = min; y_ele < max; y_ele = y_ele + dy){
-            x1[i] = x_ele;
-            y1[i] = y_ele;
-            printf("i = %d\n", i);
-            i = i + 1;            
-        }
-    }
-    int total = i;
-    double center = (min + max)/2;
-    double distance;
-
-    for(i=0;i<total;i++){
-        distance = sqrt((x1[i]-center)*(x1[i]-center) + (y1[i]-center)*(y1[i]-center));
-
-        if (distance < (max - min)/2)
-        {
-            x2[j] = x1[i];
-            y2[j] = y1[i];
-            j = j + 1;
-         }
-      
-    }
-    N = j;
-    
-    return N;
-}
 
 void tree_initialization(node *father, double *x, double *y)
 {
@@ -190,6 +179,31 @@ void tree_initialization(node *father, double *x, double *y)
             {
                 child->children[i] = NULL;
             }
+            if (i == 0)
+            {
+                x_MAX = x_half;
+                y_MAX = y_half;
+            }
+            if (i == 1)
+            {
+                x_MIN = x_half;
+                y_MAX = y_half;
+            }
+            if (i == 2)
+            {
+                x_MAX = x_half;
+                y_MIN = y_half;
+            }
+            if (i == 3)
+            {
+                x_MIN = x_half;
+                y_MIN = y_half;
+            }
+           
+            child->x_max = x_MAX;
+            child->y_max = y_MAX;
+            child->x_min = x_MIN;
+            child->y_min = y_MIN;
             // Recovery of which particle it is
             Particles = child->Particles;
             // Setting the information
@@ -280,10 +294,14 @@ void compute_force(node *father, int index, double *force_x, double *force_y, do
 
         // Distance between center and particle we are interesting into
         double r = sqrt(r_x * r_x + r_y * r_y);
-        //Compute the direction of the Force
-        double sign_x = 1, sign_y = 1;
-        if(r_x>0) sign_x = -1;
-        if(r_y>0) sign_y = -1;
+        double sign_x = 1;
+		double sign_y = 1;
+	//	if(r_x<0){
+	//		sign_x = -1;
+	//	}
+	//	if(r_y<0){
+	//		sign_y = -1;
+	//	}
 
         // If the cluster approximation is valid or it is a single particle
         if ((r * parameter >= d) || (father->N_particle == 1))
@@ -292,8 +310,8 @@ void compute_force(node *father, int index, double *force_x, double *force_y, do
             if ((father->N_particle > 1) || ((father->Particles)->index != index))
             {
                 // Actualize forces
-                force_x[index] = force_x[index] + sign_x*(father->N_particle) / (r_x * r_x);
-                force_y[index] = force_y[index] + sign_y*(father->N_particle) / (r_y * r_y);
+                force_x[index] = force_x[index] -  father->N_particle * r_x/ r;
+                force_y[index] = force_y[index] -  father->N_particle * r_y/ r;
             }
         }
         else
@@ -413,10 +431,8 @@ void update_boundaries_resetForces(double *x, double *y, double *x_new, double *
     {
         x[i] = x_new[i];
         y[i] = y_new[i];
-        x_new[i] = 0;
-        y_new[i] = 0;
-
-		y_new[i] = 0;
+	x_new[i] = 0;
+	y_new[i] = 0;
         // We also use this loop to reset the values of the forces
         force_x[i] = 0;
         force_y[i] = 0;
@@ -451,96 +467,86 @@ void update_position_velocity(double *x, double *y, double *x_new, double *y_new
 
 int main(int argc, char *argv[])
 {
-    // index of particle
-    
-    int t, i, N1 = 10000;
-    
-    // Initial limits for the position distribution
-    double x_max = 10, y_max = 10;
-    double x_min = -10, y_min = -10;
-    
-    // Spacing for the uniform distribution
-    double dx = (x_max - x_min)/sqrt(N1);
-    double dy = (y_max - y_min)/sqrt(N1);
-    
-    
-   
-    int myid, numprocess;
-    int tag = 10;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-    MPI_Comm_size(MPI_COMM_WORLD, &numprocess);
-    
-    MPI_Status status;
+	// index of particle
+	struct timeval t0, t1;
+	int t, i, N=100;
+	int myid, numprocess;
+	int tag = 10;
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+	MPI_Comm_size(MPI_COMM_WORLD, &numprocess);
 
-    // Memory initialization
-    double *x1 = (double *)calloc(N1, sizeof(double));
-    double *y1 = (double *)calloc(N1, sizeof(double));
-    double *x2 = (double *)calloc(N1, sizeof(double));
-    double *y2 = (double *)calloc(N1, sizeof(double));
+	MPI_Status status;
+	FILE *fp;
+	//	 Writing initial positions
+	if(myid==0)
+		//fp = fopen("complexity.txt", "w");
+		fp = fopen("output.txt","a");
 
-    node *Root = calloc(1, sizeof(*Root));
-    Root->EndParticle = NULL;
+    
+
+        // Memory initialization
+        double *x = (double *)calloc(N, sizeof(double));
+        double *y = (double *)calloc(N, sizeof(double));
+        double *x_new = (double *)calloc(N, sizeof(double));
+        double *y_new = (double *)calloc(N, sizeof(double));
+        double *v_x = (double *)calloc(N, sizeof(double));
+        double *v_y = (double *)calloc(N, sizeof(double));
+        double *force_x = (double *)calloc(N, sizeof(double));
+        double *force_y = (double *)calloc(N, sizeof(double));
+        node *Root = calloc(1, sizeof(*Root));
+        Root->EndParticle = NULL;
  
-    // Electron properties
-    double charge_e = 1;
-    double m_e = 1;
+        // Electron properties
+        double charge_e = 1;
+        double m_e = 1;
 
-    // Time step
-    double dt = 0.01;
-    int N_t = 5;
-    // Time measurement
+        // Time step
+        double dt = 0.01;
+        int N_t = 500;
+        // Time measurement
 
-    // Cluster approximation parameter
-    double parameter = 0.5;
+        // Cluster approximation parameter
+        double parameter = 0;
+
+        // Initial limits for the position distributon
+        double x_max = 10, y_max = 10;
+        double x_min = -10, y_min = -10;
 
 
-    // Position initialization
-    int N = circle_distribution(x_min, x_max, x1, y1, x2, y2, dx, dy, N1);
-    
-    double *x = (double *)calloc(N, sizeof(double));
-    double *y = (double *)calloc(N, sizeof(double));
-    double *x_new = (double *)calloc(N, sizeof(double));
-    double *y_new = (double *)calloc(N, sizeof(double));
-    double *v_x = (double *)calloc(N, sizeof(double));
-    double *v_y = (double *)calloc(N, sizeof(double));
-    double *force_x = (double *)calloc(N, sizeof(double));
-    double *force_y = (double *)calloc(N, sizeof(double));
+        // Position initialization
+        random_position_distribution(x_min, x_max, y_min, y_max, x, y, N);
+        //square(x_min, x_max, y_min, y_max, x, y, N);
 
-    //	 Writing initial positions
-   	FILE *fp = fopen("/Users/pyl/Desktop/ParallelProject/positions_initial.txt", "w");
-   	fprintf(fp, "%d\n",N);
-       for (i= 0; i < N; i++){
-           fprintf(fp, "%f, %f\n", x[i], y[i]);
-       }
-   	fclose(fp);
+        gettimeofday(&t0, 0);
+        // Initialization of the root
+        for (i = 0; i < N; i++)
+        {
+            Root->EndParticle = append(i, Root->EndParticle);
+            if (i == 0)
+                Root->Particles = Root->EndParticle;
+            if (i != 0)
+                Root->EndParticle = (Root->EndParticle)->next;
+        }
+        //  print(Root->Particles);
+        //  getchar();
+        Root->N_particle = N;
+        Root->x_max = x_max;
+        Root->y_max = y_max;
+        Root->x_min = x_min;
+        Root->y_min = y_min;
 
-    // Initialization of the root
-    for (i = 0; i < N; i++)
-    {
-        Root->EndParticle = append(i, Root->EndParticle);
-        if (i == 0)
-            Root->Particles = Root->EndParticle;
-        if (i != 0)
-            Root->EndParticle = (Root->EndParticle)->next;
-    }
-    //  print(Root->Particles);
-    //  getchar();
-    Root->N_particle = N;
-    Root->x_max = x_max;
-    Root->y_max = y_max;
-    Root->x_min = x_min;
-    Root->y_min = y_min;
+        int N_p = N / numprocess;
+        // But it may not be an exact division
+        int R_p = N % numprocess;
 
-    int N_p = N / numprocess;
-    // But it may not be an exact division
-    int R_p = N % numprocess;
-
-    for (t = 0; t < N_t; t++)
+//        printf("SUCCESS 1");
+        for (t = 0; t < N_t; t++)
         {
             // Initialization of the tree : every process are going to construct the tree
 
             tree_initialization(Root, x, y);
+  //          printf("SUCCESS 2");
 
             // Data partitioning
             for (i = myid * N_p; i < (myid + 1) * N_p; i++)
@@ -549,9 +555,8 @@ int main(int argc, char *argv[])
                 compute_force(Root, i, force_x, force_y, x, y, parameter);
                 // Updating the position + velocity
                 update_position_velocity(x, y, x_new, y_new, v_x, v_y, force_x, force_y, dt, i);
-                
-               // printf("%f, %f\n", x[0], y[0]);
             }
+
             // Rest of the data to compute : only for some processes
             if (myid < R_p)
             {
@@ -560,45 +565,46 @@ int main(int argc, char *argv[])
                 compute_force(Root, i, force_x, force_y, x, y, parameter);
                 // Updating the position + velocity
                 update_position_velocity(x, y, x_new, y_new, v_x, v_y, force_x, force_y, dt, i);
-                
             }
-            
-            
+
             // Recursive doubling here
             recursive_doubling(myid, x, y, x_new, y_new, v_x, v_y, numprocess, N, N_p, R_p, tag);
-           
+
             // Finally updating the root boundaries and reseting forces values
             update_boundaries_resetForces(x, y, x_new, y_new, force_x, force_y, N, Root);
-            
-            
 
             // Waiting for all process to finish their step
             MPI_Barrier(MPI_COMM_WORLD);
-            if (myid == 0)
-            {
-                printf("position, t, %f, %d\n", x[1], t);
-				FILE *fp = fopen("output.txt","a");
-                for(i=0;i<N;i++){
-					fprintf(fp,"%d, %f, %f\n",i, x[i],y[i]);
-				}
-			fclose(fp);
-            }
-
+            gettimeofday(&t1,0);
+            double time_spent = (t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec - t0.tv_usec;
+            if(myid==0){
+            printf("Time spent for N = %d particles : %lf \n", N, time_spent);
+		  //  fprintf(fp, "%d, %lf\n", N, time_spent);
+			for(i=0;i<N;i++){
+				fprintf(fp, "%f, %f\n", x[i],y[i]);
+			}
+		}
+			 
             
         }
-
-       //Free memory
-       free(x);
-       free(y);
-       free(x_new);
-       free(y_new);
-       free(v_x);
-       free(v_y);
-       free(force_x);
-       free(force_y);
-
-       MPI_Finalize();
-
+                    //Free memory
+            free(x);
+            free(y);
+            free(x_new);
+            free(y_new);
+            free(v_x);
+            free(v_y);
+            free(force_x);
+            free(force_y);
+            
+            // Update number of particles
+            N = N * 2;
+            
+	if(myid ==0){
+	    fclose(fp);
+    }
+         MPI_Finalize();
+    
         return 0;
     
 }
