@@ -37,11 +37,39 @@ double frand(double min, double max)
 void random_position_distribution(double x_min, double x_max, double y_min, double y_max, double z_min, double z_max, double *x, double *y, double *z, int N)
 {
     int i;
-    for (i = 0; i < N; i++)
+    int j = 0;
+    for (i = 0; i < 10*N; i++)
     {
-        y[i] = frand(y_min, y_max);
-        x[i] = frand(x_min, x_max);
-        z[i] = frand(z_min, z_max);
+       // double R = (x_max - x_min) / 2;
+       // double theta = frand(0, 2*3.14159);
+       // double phi = frand(0,3.14159);
+       // double k = frand(0, 1);
+       // double r = sqrt(k) * R;
+       // x[i] = r * sin(theta) * cos(phi);
+       // y[i] = r * sin(theta) * sin(phi);
+       // z[i] = r * cos(theta);
+       //  y[i] = frand(y_min, y_max);
+       //  x[i] = frand(x_min, x_max);
+       // z[i] = frand(z_min, z_max);
+        double x_in;
+        double y_in;
+        double z_in;
+        x_in = frand(x_min,x_max);
+        y_in = frand(y_min,y_max);
+        z_in = frand(z_min,z_max);
+        double circle_center = (x_min + x_max) / 2;
+        double distance = sqrt((x_in-circle_center)*(x_in-circle_center) + (y_in-circle_center)*(y_in-circle_center)  + (z_in-circle_center)*(z_in-circle_center));
+        double R = (x_max - x_min) / 2;
+        printf("%d, %d\n",i,j);
+        if(distance < R){
+            x[j] = x_in;
+            y[j] = y_in;
+            z[j] = z_in;
+            j = j + 1;
+        }
+        if(j>N){
+            break;
+        }
     }
 }
 
@@ -530,7 +558,7 @@ void recursive_doubling(int myid, double *x, double *y,double *z, double *x_new,
     }
 }
 
-void update_boundaries_resetForces(double *x, double *y, double *z, double *x_new, double *y_new, double *z_new, double *force_x, double *force_y, double *force_z, int N, node *Root)
+void update_boundaries_resetForces(double *x, double *y, double *z, double *x_new, double *y_new, double *z_new, double *force_x, double *force_y, double *force_z, int N, node *Root,double *E, double *E_new)
 {
     // We are going to need the max and min for boundaries!
     double x_max = x[0];
@@ -545,6 +573,7 @@ void update_boundaries_resetForces(double *x, double *y, double *z, double *x_ne
         x[i] = x_new[i];
         y[i] = y_new[i];
         z[i] = z_new[i];
+        E[i] = E_new[i];
         x_new[i] = 0;
         y_new[i] = 0;
         z_new[i] = 0;
@@ -607,7 +636,7 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &numprocess);
 
     MPI_Status status;
-    for (N = 10000; N < 10001; N++)
+    for (N = 1000; N < 1001; N++)
     {
         // Memory initialization
         double *x = (double *)calloc(N, sizeof(double));
@@ -632,16 +661,16 @@ int main(int argc, char *argv[])
         double m_e = 1;
 
         // Time step
-        double dt = 0.001;
-        int N_t = 1;
+        double dt = 0.01;
+        int N_t = 1000;
         // Time measurement
 
         // Cluster approximation parameter
-        double parameter = 0.5;
+        double parameter = 0;
 
         // Initial limits for the position distribution
         double x_max = 10, y_max = 10, z_max = 10;
-        double x_min = -10, y_min = -10, z_min = -10;;
+        double x_min = -10, y_min = -10, z_min = -10;
 
 
         clock_t begin = clock();
@@ -712,7 +741,7 @@ int main(int argc, char *argv[])
             recursive_doubling(myid, x, y, z, x_new, y_new, z_new, v_x, v_y, v_z, numprocess, N, N_p, R_p, tag, E, E_new);
 
             // Finally updating the root boundaries and reseting forces values
-            update_boundaries_resetForces(x, y, z, x_new, y_new, z_new, force_x, force_y, force_z, N, Root);
+            update_boundaries_resetForces(x, y, z, x_new, y_new, z_new, force_x, force_y, force_z, N, Root,E, E_new);
 
 
 
